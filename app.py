@@ -124,14 +124,28 @@ def login():
         return jsonify(response)
 
 
-@app.route('/view-profile/id_number', methods=["GET"])
+@app.route('/display-users/', methods=["GET"])
+def display_users():
+    response = {}
+    with sqlite3.connect("pos.db") as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM user")
+
+        all_users = cursor.fetchall()
+
+    response['status_code'] = 200
+    response['data'] = all_users
+    return response
+
+
+@app.route('/view-profile/<int:id>/', methods=["GET"])
 @jwt_required()
-def view_profile(id_number):
+def view_profile(id):
     response = {}
 
     with sqlite3.connect('pos.db') as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM user WHERE id=?" + str(id_number))
+        cursor.execute("SELECT * FROM user WHERE id=?", (str(id)))
 
         response['status_code'] = 200
         response['message'] = "Profile retrieved successfully"
@@ -140,12 +154,12 @@ def view_profile(id_number):
     return jsonify(response)
 
 
-@app.route('/edit-profile/<int:id>', methods=["PUT"])
+@app.route('/edit-profile/<int:id>/', methods=["PUT"])
 @jwt_required()
 def edit_profile(id):
     response = {}
 
-    if request == "PUT":
+    if request.method == "PUT":
         with sqlite3.connect('pos.db') as conn:
             incoming_data = dict(request.json)
             put_data = {}
@@ -194,6 +208,7 @@ def edit_profile(id):
                     conn.commit()
                     response['status_code'] = 200
                     response['message'] = "Password successfully updated"
+    return response
 
 
 @app.route('/add-product/', methods=["POST"])
@@ -207,11 +222,12 @@ def add_product():
         description = request.form['description']
         dimensions = request.form['dimensions']
         price = request.form['price']
+        id = request.form['id']
 
         with sqlite3.connect('pos.db') as conn:
             cursor = conn.cursor()
-            cursor.execute("INSERT INTO product (product, category, description, dimensions, price) "
-                           "VALUES(?, ?, ?, ?, ?)", (product, category, description, dimensions, price))
+            cursor.execute("INSERT INTO product (product, category, description, dimensions, price, id) "
+                           "VALUES(?, ?, ?, ?, ?, ?)", (product, category, description, dimensions, price, id))
             conn.commit()
             response["status_code"] = 201
             response['description'] = "Product added successfully"
@@ -291,6 +307,17 @@ def edit_product(product_id):
                 conn.commit()
                 response['status_code'] = 200
                 response['message'] = "Price was successfully updated."
+
+        if incoming_data.get('id') is not None:
+            put_data['id'] = incoming_data.get('id')
+
+            with sqlite3.connect('pos.db') as conn:
+                cursor = conn.cursor()
+                cursor.execute("UPDATE product SET id=? WHERE product_id=?",
+                               (put_data['id'], product_id))
+                conn.commit()
+                response['status_code'] = 200
+                response['message'] = "ID was successfully updated."
     return response
 
 
@@ -309,8 +336,8 @@ def get_products():
     return response
 
 
-@app.route('/get-product/<int:product_id>', methods=["GET"])
-def get_product(product_id):
+@app.route('/view-product/<int:product_id>', methods=["GET"])
+def view_product(product_id):
     response = {}
 
     with sqlite3.connect('pos.db') as conn:
