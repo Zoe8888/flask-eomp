@@ -337,6 +337,7 @@ def get_products():
 
 
 @app.route('/view-product/<int:product_id>', methods=["GET"])
+@jwt_required()
 def view_product(product_id):
     response = {}
 
@@ -349,6 +350,22 @@ def view_product(product_id):
         response['data'] = cursor.fetchone()
 
     return jsonify(response)
+
+
+@app.route('/view-user-products/<int:id>/', methods=["GET"])
+def view_user_products(id):
+    response = {}
+
+    with sqlite3.connect('pos.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM product WHERE id=?", (str(id)))
+        all_products = cursor.fetchall()
+
+        response['status_code'] = 200
+        response['message'] = "All products from user retrieved successfully"
+        response['data'] = all_products
+
+        return response
 
 
 if __name__ == '__main__':
