@@ -55,8 +55,8 @@ init_user_table()
 init_product_table()
 users = fetch_users()
 
-username_table = { u.username: u for u in users }
-userid_table = { u.id: u for u in users }
+username_table = {u.username: u for u in users}
+userid_table = {u.id: u for u in users}
 
 
 def authenticate(username, password):
@@ -74,6 +74,7 @@ app = Flask(__name__)
 CORS(app)
 app.debug = True
 app.config['SECRET_KEY'] = 'super-secret'
+app.config['JWT_EXPIRATION_DELTA'] = datetime.timedelta(hours=20)
 
 jwt = JWT(app, authenticate, identity)
 
@@ -94,9 +95,38 @@ def registration():
             cursor = conn.cursor()
             cursor.execute("INSERT INTO user(name, surname, id_number, username, password) VALUES (?, ?, ?, ?, ?)",
                            (name, surname, id_number, username, password))
-            conn.commit()
-            response["message"] = "New user successfully registered"
-            response["status_code"] = 201
+
+            cursor2 = conn.cursor()
+            cursor2.execute("SELECT * FROM user")
+            all_users = cursor2.fetchall()
+
+            cursor3 = conn.cursor()
+            cursor3.execute("SELECT * FROM user")
+            all_users2 = cursor3.fetchall()
+
+            if name == '' or surname == '' or id_number == '' or username == '' or password == '':
+                response['status_code'] = 400
+                response['message'] = "Error! Please enter all fields."
+
+            if all_users:
+                response['id_number'] = id_number
+                response['status_code'] = 400
+                response['message'] = "A profile with this ID number has already been registered"
+
+            # if all_users:
+            #     len(response['id_number']) != 13
+            #     response['status_code'] = 401
+            #     response['message'] = "Error! ID number must 13 digits."
+
+            if all_users2:
+                response['username'] = username
+                response['status_code'] = 400
+                response['message'] = "Username already taken. Please enter a unique username."
+
+            else:
+                conn.commit()
+                response["message"] = "New user successfully registered"
+                response["status_code"] = 200
         return response
 
 
@@ -112,6 +142,14 @@ def login():
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM user WHERE username=? AND password=?", (username, password))
             registered_user = cursor.fetchone()
+
+        if username == '':
+            response['status_code'] = 401
+            response['message'] = "Error! Please enter your username."
+
+        if password == '':
+            response['status_code'] = 401
+            response['message'] = "Error! Please enter your password."
 
         if registered_user:
             response['registered_user'] = registered_user
