@@ -1,19 +1,32 @@
+# Importing various modules
 import hmac
 import sqlite3
 import datetime
-
+from flask_mail import Mail, Message
 from flask import Flask, request, jsonify
-from flask_jwt import JWT, jwt_required, current_identity
+from flask_jwt import JWT, jwt_required
 from flask_cors import CORS
 
 
+# Creating a user class
 class User(object):
     def __init__(self, id, username, password):
         self.id = id
         self.username = username
         self.password = password
 
+# Creating a product class
+class Product(object):
+    def __init__(self, product_id, product, category, description, dimensions, price):
+        self.product_id = product_id
+        self.product = product
+        self.category = category
+        self.description = description
+        self.dimensions = dimensions
+        self.price = price
 
+
+# Fetching all users
 def fetch_users():
     with sqlite3.connect('pos.db') as conn:
         cursor = conn.cursor()
@@ -27,17 +40,58 @@ def fetch_users():
     return new_data
 
 
+# Creating a database class
+class Database():
+    def __init__(self):
+        self.conn = sqlite3.connect('pos.db')
+        self.cursor = self.conn.cursor()
+
+    def add_product(self, value):
+        query = ("INSERT INTO product (product, category, description, dimensions, price, id) "
+                           "VALUES(?, ?, ?, ?, ?, ?)".format(value))
+        self.cursor.execute(query)
+        self.conn.commit()
+
+    def edit_product(self, value):
+        query = ("")
+
+    def delete_product(self, value):
+        query = ("DELETE FROM product WHERE product_id={}".format(value))
+        self.cursor.execute(query)
+        self.conn.commit()
+
+
+
+# Fetching all products
+def fetch_products():
+    with sqlite3.connect('pos.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM product")
+        products = cursor.fetchall()
+
+        new_product = []
+
+        for data in products:
+            new_product.append(Product(data[0], data[1], data[2], data[3], data[4], data[5]))
+    return new_product
+
+user = fetch_products()
+products = fetch_products()
+
+
+# Creating a user table
 def init_user_table():
     conn = sqlite3.connect('pos.db')
     print('Opened database successfully.')
 
     conn.execute("CREATE TABLE IF NOT EXISTS user (id INTEGER PRIMARY KEY AUTOINCREMENT,"
-                 "name TEXT NOT NULL, surname TEXT NOT NULL, id_number TEXT NOT NULL, username TEXT NOT NULL,"
+                 "name TEXT NOT NULL, surname TEXT NOT NULL, email TEXT NOT NULL, username TEXT NOT NULL,"
                  "password TEXT NOT NULL)")
     print("User table created successfully")
     conn.close()
 
 
+# Creating a product table
 def init_product_table():
     with sqlite3.connect('pos.db') as conn:
         conn.execute("CREATE TABLE IF NOT EXISTS product (product_id INTEGER PRIMARY KEY AUTOINCREMENT,"
@@ -75,10 +129,17 @@ CORS(app)
 app.debug = True
 app.config['SECRET_KEY'] = 'super-secret'
 app.config['JWT_EXPIRATION_DELTA'] = datetime.timedelta(hours=20)
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 465
+app.config['MAIL_USERNAME'] = 'ifyshop965@gmail.com'
+app.config['MAIL_PASSWORD'] = 't3amShopify'
+app.config['MAIL_USE_TLS'] = False
+app.config['MAIL_USE_SSL'] = True
 
 jwt = JWT(app, authenticate, identity)
 
 
+# User registration route and function
 @app.route('/registration/', methods=["POST"])
 def registration():
     response = {}
@@ -87,49 +148,47 @@ def registration():
 
         name = request.form['name']
         surname = request.form['surname']
-        id_number = request.form['id_number']
+        email = request.form['email']
         username = request.form['username']
         password = request.form['password']
 
         with sqlite3.connect('pos.db') as conn:
             cursor = conn.cursor()
-            cursor.execute("INSERT INTO user(name, surname, id_number, username, password) VALUES (?, ?, ?, ?, ?)",
-                           (name, surname, id_number, username, password))
+            cursor.execute("SELECT * FROM user WHERE username='{}'".format(username))
+            registered_username = cursor.fetchone()
 
-            cursor2 = conn.cursor()
-            cursor2.execute("SELECT * FROM user")
-            all_users = cursor2.fetchall()
+        if name == '' or surname == '' or email == '' or username == '' or password == '':
+            response['status_code'] = 400
+            response['message'] = "Error! Please enter all fields."
+            return response
 
-            cursor3 = conn.cursor()
-            cursor3.execute("SELECT * FROM user")
-            all_users2 = cursor3.fetchall()
+        if registered_username:
+            response['username'] = username
+            response['status_code'] = 400
+            response['message'] = "Username already taken. Please enter a unique username."
+            return response
 
-            if name == '' or surname == '' or id_number == '' or username == '' or password == '':
-                response['status_code'] = 400
-                response['message'] = "Error! Please enter all fields."
+        with sqlite3.connect('pos.db') as conn:
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO user(name, surname, email, username, password) VALUES (?, ?, ?, ?, ?)",
+                           (name, surname, email, username, password))
+            conn.commit()
+            response["message"] = "New user successfully registered"
+            response["status_code"] = 200
 
-            if all_users:
-                response['id_number'] = id_number
-                response['status_code'] = 400
-                response['message'] = "A profile with this ID number has already been registered"
+            mail = Mail(app)
+            msg = Message("Welcome!", sender='ifyshop965@gmail.com', recipients=[email])
+            msg.body = "Good morning/afternoon {}.\n".format(name)
+            msg.body = msg.body + "Your have successfully registered your profile on our site with the username {}.\n"\
+                .format(username)
+            msg.body = msg.body + "Please feel free to send us email if you have any queries or concerns.\n " \
+                                  "Kind regards,\n Shopify Team"
+            mail.send(msg)
 
-            # if all_users:
-            #     len(response['id_number']) != 13
-            #     response['status_code'] = 401
-            #     response['message'] = "Error! ID number must 13 digits."
-
-            if all_users2:
-                response['username'] = username
-                response['status_code'] = 400
-                response['message'] = "Username already taken. Please enter a unique username."
-
-            else:
-                conn.commit()
-                response["message"] = "New user successfully registered"
-                response["status_code"] = 200
         return response
 
 
+# User login route and function
 @app.route('/login/', methods=["POST"])
 def login():
     response = {}
@@ -144,24 +203,28 @@ def login():
             registered_user = cursor.fetchone()
 
         if username == '':
-            response['status_code'] = 401
+            response['status_code'] = 400
             response['message'] = "Error! Please enter your username."
+            return response
 
         if password == '':
-            response['status_code'] = 401
+            response['status_code'] = 400
             response['message'] = "Error! Please enter your password."
+            return response
 
         if registered_user:
             response['registered_user'] = registered_user
             response['status_code'] = 200
             response['message'] = "Successfully logged in"
+            return response
 
         else:
-            response['status_code'] = 401
+            response['status_code'] = 400
             response['message'] = "Login unsuccessful. Please try again."
         return jsonify(response)
 
 
+# Display all users route anf function
 @app.route('/display-users/', methods=["GET"])
 def display_users():
     response = {}
@@ -176,6 +239,7 @@ def display_users():
     return response
 
 
+# View specific users profile route and function
 @app.route('/view-profile/<int:id>/', methods=["GET"])
 @jwt_required()
 def view_profile(id):
@@ -192,6 +256,7 @@ def view_profile(id):
     return jsonify(response)
 
 
+# Edit users profile route and function
 @app.route('/edit-profile/<int:id>/', methods=["PUT"])
 @jwt_required()
 def edit_profile(id):
@@ -220,11 +285,11 @@ def edit_profile(id):
                     response['status_code'] = 200
                     response['message'] = "Surname successfully updated"
 
-            if incoming_data.get('id_number') is not None:
-                put_data['id_number'] = incoming_data.get('id_number')
+            if incoming_data.get('email') is not None:
+                put_data['email'] = incoming_data.get('email')
                 with sqlite3.connect('pos.db') as conn:
                     cursor = conn.cursor()
-                    cursor.execute("UPDATE user SET id_number =? WHERE id=?", (put_data['id_number'], id))
+                    cursor.execute("UPDATE user SET email =? WHERE id=?", (put_data['email'], id))
                     conn.commit()
                     response['status_code'] = 200
                     response['message'] = "ID number successfully updated"
@@ -249,9 +314,24 @@ def edit_profile(id):
     return response
 
 
+# Delete a users profile route and function
+@app.route('/delete-profile/<int:id>')
+def delete_profile(id):
+    response = {}
+    with sqlite3.connect('pos.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM user WHERE id=" + str(id))
+        conn.commit()
+        response['status_code'] = 200
+        response['message'] = "Profile successfully deleted"
+    return response
+
+
+# Adding a new product route and function
 @app.route('/add-product/', methods=["POST"])
 @jwt_required()
 def add_product():
+    db = Database
     response = {}
 
     if request.method == "POST":
@@ -261,30 +341,26 @@ def add_product():
         dimensions = request.form['dimensions']
         price = request.form['price']
         id = request.form['id']
-
-        with sqlite3.connect('pos.db') as conn:
-            cursor = conn.cursor()
-            cursor.execute("INSERT INTO product (product, category, description, dimensions, price, id) "
-                           "VALUES(?, ?, ?, ?, ?, ?)", (product, category, description, dimensions, price, id))
-            conn.commit()
-            response["status_code"] = 201
-            response['description'] = "Product added successfully"
+        values = (product, category, description, dimensions, price, id)
+        db.add_product(values)
+        response["status_code"] = 201
+        response['description'] = "Product added successfully"
         return response
 
 
+# Deleting a specific product route and function
 @app.route('/delete-product/<int:product_id>')
 @jwt_required()
 def delete_product(product_id):
+    database = Database()
     response = {}
-    with sqlite3.connect('pos.db') as conn:
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM product WHERE product_id=" + str(product_id))
-        conn.commit()
-        response['status_code'] = 200
-        response['message'] = "Product successfully deleted"
+    database.delete_product(product_id)
+    response['status_code'] = 200
+    response['message'] = "Product successfully deleted"
     return response
 
 
+# Editing a specific product route and function
 @app.route('/edit-product/<int:product_id>/', methods=["PUT"])
 @jwt_required()
 def edit_product(product_id):
@@ -359,9 +435,10 @@ def edit_product(product_id):
     return response
 
 
-@app.route('/get-products/', methods=["GET"])
+# Display all products route and function
+@app.route('/show-products/', methods=["GET"])
 @jwt_required()
-def get_products():
+def show_products():
     response = {}
 
     with sqlite3.connect('pos.db') as conn:
@@ -374,6 +451,7 @@ def get_products():
     return response
 
 
+# View a specific product route and function
 @app.route('/view-product/<int:product_id>', methods=["GET"])
 @jwt_required()
 def view_product(product_id):
@@ -390,6 +468,7 @@ def view_product(product_id):
     return jsonify(response)
 
 
+# View a specifics users products route and function
 @app.route('/view-user-products/<int:id>/', methods=["GET"])
 def view_user_products(id):
     response = {}
