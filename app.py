@@ -31,6 +31,15 @@ class Product(object):
         self.price = price
 
 
+class Cart(object):
+    def __init__(self, product_id, product_name, product_image, quantity, price):
+        self.product_id = product_id
+        self.product = product_name
+        self.product_image = product_image
+        self.quantity = quantity
+        self.price = price
+
+
 # Creating a database class
 class Database():
     def __init__(self):
@@ -254,6 +263,14 @@ def init_product_table():
         print("Product table created successfully.")
 
 
+# Creating a cart table
+def init_cart_table():
+    with sqlite3.connect('pos.db') as conn:
+        conn.execute("CREATE TABLE IF NOT EXISTS cart (product_id INTEGER FOREIGN KEY, product_name TEXT NOT NULL, "
+                     "product_image TEXT NOT NULL, quantity TEXT NOT NULL, price TEXT NOT NULL)")
+        print("Cart table created successfully.")
+
+
 # Fetching all users
 def fetch_users():
     with sqlite3.connect('pos.db') as conn:
@@ -275,21 +292,38 @@ def fetch_products():
         cursor.execute("SELECT * FROM product")
         products = cursor.fetchall()
 
-        new_product = []
+        new_data = []
 
         for data in products:
-            new_product.append(Product(data[0], data[1], data[2], data[3], data[4], data[5], data[6]))
-    return new_product
+            new_data.append(Product(data[0], data[1], data[2], data[3], data[4], data[5], data[6]))
+    return new_data
+
+# Fetching cart contents
+def fetch_carts():
+    with sqlite3.connect('pos.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM cart")
+        carts = cursor.fetchall()
+
+        new_data = []
+
+        for data in carts:
+            new_data.append(Cart(data[0], data[1], data[2], data[3], data[4]))
+    return new_data
 
 
-# def init_cart_table():
-#     with sqlite3.connect('pos.db') as conn:
-#         conn.execute("CREATE TABLE IF NOT EXISTS cart (product_id INTEGER FOREIGN KEY)")
-
+# Initializing user table
 init_user_table()
+# Initializing product table
 init_product_table()
+# Initializing the cart table
+init_cart_table()
+# Creating list of all users
 users = fetch_users()
+# Creating list of all products
 products = fetch_products()
+# Creating a list of all the carts
+carts = fetch_carts()
 
 
 username_table = {u.username: u for u in users}
@@ -327,7 +361,7 @@ app.config['MAIL_USE_SSL'] = True
 jwt = JWT(app, authenticate, identity)
 
 
-# User registration route and function
+# User registration route
 @app.route('/registration/', methods=["POST"])
 def registration():
     db = Database()
@@ -366,7 +400,7 @@ def registration():
 
         db.registration(name, surname, email, username, password)
 
-        # Sends an email to the user confirming they have successfully registered
+        # Sends an email to the user after they have successfully registered
         mail = Mail(app)
         msg = Message("Welcome!", sender='ifyshop965@gmail.com', recipients=[email])
         msg.body = "Good morning/afternoon {}.\n".format(name)
@@ -418,7 +452,7 @@ def login():
         return jsonify(response)
 
 
-# Display all users route anf function
+# Display all users route
 @app.route('/display-users/', methods=["GET"])
 def display_users():
     response = {}
@@ -433,7 +467,7 @@ def display_users():
     return response
 
 
-# View specific users profile route and function
+# View specific users profile route
 @app.route('/view-profile/<int:id>/', methods=["GET"])
 @jwt_required()
 def view_profile(id):
@@ -450,7 +484,7 @@ def view_profile(id):
     return jsonify(response)
 
 
-# Edit users profile route and function
+# Edit users profile route
 @app.route('/edit-profile/<int:id>/', methods=["PUT"])
 @jwt_required()
 def edit_profile(id):
@@ -464,7 +498,7 @@ def edit_profile(id):
     return response
 
 
-# Delete a users profile route and function
+# Delete a users profile route
 @app.route('/delete-profile/<int:id>')
 @jwt_required()
 def delete_profile(id):
@@ -476,7 +510,7 @@ def delete_profile(id):
     return response
 
 
-# Adding a new product route and function
+# Adding a new product route
 @app.route('/add-product/', methods=["POST"])
 @jwt_required()
 def add_product():
@@ -498,7 +532,7 @@ def add_product():
         return response
 
 
-# Deleting a specific product route and function
+# Deleting a specific product route
 @app.route('/delete-product/<int:product_id>')
 @jwt_required()
 def delete_product(product_id):
@@ -510,7 +544,7 @@ def delete_product(product_id):
     return response
 
 
-# Editing a specific product route and function
+# Editing a specific product route
 @app.route('/edit-product/<int:product_id>/', methods=["PUT"])
 @jwt_required()
 def edit_product(product_id):
@@ -524,7 +558,7 @@ def edit_product(product_id):
     return response
 
 
-# Display all products route and function
+# Display all products route
 @app.route('/show-products/', methods=["GET"])
 def show_products():
     db = Database()
@@ -536,7 +570,7 @@ def show_products():
     return response
 
 
-# View a specific product route and function
+# View a specific product route
 @app.route('/view-product/<int:product_id>', methods=["GET"])
 def view_product(product_id):
     db = Database()
@@ -550,7 +584,7 @@ def view_product(product_id):
     return jsonify(response)
 
 
-# View a specifics users products route and function
+# View a specifics users products route
 @app.route('/view-users-products/<int:id>/', methods=["GET"])
 def view_users_products(id):
     response = {}
