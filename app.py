@@ -440,6 +440,7 @@ def edit_profile(id):
 
 # Delete a users profile route and function
 @app.route('/delete-profile/<int:id>')
+@jwt_required()
 def delete_profile(id):
     response = {}
     db = Database()
@@ -499,7 +500,6 @@ def edit_product(product_id):
 
 # Display all products route and function
 @app.route('/show-products/', methods=["GET"])
-@jwt_required()
 def show_products():
     db = Database()
     response = {}
@@ -512,7 +512,6 @@ def show_products():
 
 # View a specific product route and function
 @app.route('/view-product/<int:product_id>', methods=["GET"])
-@jwt_required()
 def view_product(product_id):
     db = Database()
     response = {}
@@ -527,7 +526,6 @@ def view_product(product_id):
 
 # View a specifics users products route and function
 @app.route('/view-user-products/<int:id>/', methods=["GET"])
-@jwt_required()
 def view_user_products(id):
     response = {}
     db = Database()
