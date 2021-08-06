@@ -2,6 +2,10 @@
 import hmac
 import sqlite3
 import datetime
+import cloudinary
+import cloudinary.uploader
+import validate_email
+import DNS
 from flask_mail import Mail, Message
 from flask import Flask, request, jsonify
 from flask_jwt import JWT, jwt_required
@@ -17,27 +21,14 @@ class User(object):
 
 # Creating a product class
 class Product(object):
-    def __init__(self, product_id, product, category, description, dimensions, price):
+    def __init__(self, product_id, product_name, product_image, category, description, dimensions, price):
         self.product_id = product_id
-        self.product = product
+        self.product = product_name
+        self.product_image = product_image
         self.category = category
         self.description = description
         self.dimensions = dimensions
         self.price = price
-
-
-# Fetching all users
-def fetch_users():
-    with sqlite3.connect('pos.db') as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM user")
-        users = cursor.fetchall()
-
-        new_data = []
-
-        for data in users:
-            new_data.append(User(data[0], data[4], data[5]))
-    return new_data
 
 
 # Creating a database class
@@ -46,9 +37,9 @@ class Database():
         self.conn = sqlite3.connect('pos.db')
         self.cursor = self.conn.cursor()
 
-    def registration(self, value):
-        query = ("INSERT INTO user(name, surname, email, username, password) VALUES (?, ?, ?, ?, ?)".format(value))
-        self.cursor.execute(query)
+    def registration(self, name, surname, email, username, password):
+        self.cursor.execute("INSERT INTO user(name, surname, email, username, password) VALUES (?, ?, ?, ?, ?)"
+                            , (name, surname, email, username, password))
         self.conn.commit()
 
     def edit_profile(self, incoming_data, id):
@@ -100,29 +91,47 @@ class Database():
                 response['status_code'] = 200
                 response['message'] = "Password successfully updated"
 
+        return response
+
+
     def delete_profile(self, value):
-        query = ("DELETE FROM user WHERE id=".format(value))
+        query = ("DELETE FROM user WHERE id='{}'".format(value))
         self.cursor.execute(query)
         self.conn.commit()
 
-    def add_product(self, value):
-        query = ("INSERT INTO product (product, category, description, dimensions, price, id) "
-                           "VALUES(?, ?, ?, ?, ?, ?)".format(value))
-        self.cursor.execute(query)
+    def add_product(self, product_name, product_image, category, description, dimensions, price, id):
+        cloudinary.config(cloud_name='dxgylrfai', api_key='297452228378499', api_secret='lMfu9nSDHtFhnaRTiEch_gfzm_A')
+        upload_result = None
+        app.logger.info('%s file_to_upload', product_image)
+        if product_name:
+            upload_result = cloudinary.uploader.upload(product_image)
+            app.logger.info(upload_result)
+        self.cursor.execute("INSERT INTO product (product_name, product_image, category, description, dimensions, "
+                            "price, id) VALUES(?, ?, ?, ?, ?, ?, ?)",
+                            (product_name, upload_result['url'], category, description, dimensions, price, id))
         self.conn.commit()
 
     def edit_product(self, incoming_data, product_id):
         response = {}
         put_data = {}
 
-        if incoming_data.get('product') is not None:
-            put_data['product'] = incoming_data.get('product')
+        if incoming_data.get('product_name') is not None:
+            put_data['product_name'] = incoming_data.get('product_name')
             with sqlite3.connect('pos.db') as conn:
                 cursor = conn.cursor()
-                cursor.execute("UPDATE product SET product =? WHERE product_id=?", (put_data['product'], product_id))
+                cursor.execute("UPDATE product SET product_name =? WHERE product_id=?", (put_data['product_name'], product_id))
                 conn.commit()
                 response['status_code'] = 200
-                response['message'] = "Product successfully updated."
+                response['message'] = "Product name was successfully updated."
+
+        if incoming_data.get('product_image') is not None:
+            put_data['product_image'] = incoming_data.get('product_image')
+            with sqlite3.connect('pos.db') as conn:
+                cursor = conn.cursor()
+                cursor.execute("UPDATE product SET product_image =? WHERE product_id=?", (put_data['product_image'], product_id))
+                conn.commit()
+                response['status_code'] = 200
+                response['message'] = "Product image was successfully updated."
 
         if incoming_data.get('category') is not None:
             put_data['category'] = incoming_data.get('category')
@@ -177,6 +186,8 @@ class Database():
                 response['status_code'] = 200
                 response['message'] = "ID was successfully updated."
 
+        return response
+
     def delete_product(self, value):
         query = ("DELETE FROM product WHERE product_id='{}'".format(value))
         self.cursor.execute(query)
@@ -188,32 +199,15 @@ class Database():
         return self.cursor.fetchall()
 
     def view_product(self, value):
-        response = {}
         query = ("SELECT * FROM product WHERE product_id='{}'".format(value))
         self.cursor.execute(query)
-        response['data'] = self.cursor.fetchone()
+        response = self.cursor.fetchone()
+        return response
 
     def view_users_products(self, value):
-        response = {}
         query = ("SELECT * FROM product WHERE id='{}'".format(value))
-
-
-
-# Fetching all products
-def fetch_products():
-    with sqlite3.connect('pos.db') as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM product")
-        products = cursor.fetchall()
-
-        new_product = []
-
-        for data in products:
-            new_product.append(Product(data[0], data[1], data[2], data[3], data[4], data[5]))
-    return new_product
-
-user = fetch_products()
-products = fetch_products()
+        self.cursor.execute(query)
+        return  self.cursor.fetchall()
 
 
 # Creating a user table
@@ -232,19 +226,49 @@ def init_user_table():
 def init_product_table():
     with sqlite3.connect('pos.db') as conn:
         conn.execute("CREATE TABLE IF NOT EXISTS product (product_id INTEGER PRIMARY KEY AUTOINCREMENT,"
-                     "product TEXT NOT NULL, category TEXT NOT NULL, description TEXT NOT NULL, "
-                     "dimensions TEXT NOT NULL, price TEXT NOT NULL)")
+                     "product_name TEXT NOT NULL, product_image TEXT NOT NULL, category TEXT NOT NULL, "
+                     "description TEXT NOT NULL, dimensions TEXT NOT NULL, price TEXT NOT NULL, id INTEGER NOT NULL,"
+                     "FOREIGN KEY (id) REFERENCES user(id))")
         print("Product table created successfully.")
 
 
-def init_cart_table():
+# Fetching all users
+def fetch_users():
     with sqlite3.connect('pos.db') as conn:
-        conn.execute("CREATE TABLE IF NOT EXISTS cart (product_id INTEGER FOREIGN KEY)")
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM user")
+        users = cursor.fetchall()
 
+        new_data = []
+
+        for data in users:
+            new_data.append(User(data[0], data[4], data[5]))
+    return new_data
+
+
+# Fetching all products
+def fetch_products():
+    with sqlite3.connect('pos.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM product")
+        products = cursor.fetchall()
+
+        new_product = []
+
+        for data in products:
+            new_product.append(Product(data[0], data[1], data[2], data[3], data[4], data[5], data[6]))
+    return new_product
+
+
+# def init_cart_table():
+#     with sqlite3.connect('pos.db') as conn:
+#         conn.execute("CREATE TABLE IF NOT EXISTS cart (product_id INTEGER FOREIGN KEY)")
 
 init_user_table()
 init_product_table()
 users = fetch_users()
+products = fetch_products()
+
 
 username_table = {u.username: u for u in users}
 userid_table = {u.id: u for u in users}
@@ -266,10 +290,14 @@ app = Flask(__name__)
 CORS(app)
 app.debug = True
 app.config['SECRET_KEY'] = 'super-secret'
+# Extends the jwt tokens validation time to 20 hours
 app.config['JWT_EXPIRATION_DELTA'] = datetime.timedelta(hours=20)
+
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 465
+# Senders email
 app.config['MAIL_USERNAME'] = 'ifyshop965@gmail.com'
+# Senders password
 app.config['MAIL_PASSWORD'] = 't3amShopify'
 app.config['MAIL_USE_TLS'] = False
 app.config['MAIL_USE_SSL'] = True
@@ -280,7 +308,7 @@ jwt = JWT(app, authenticate, identity)
 # User registration route and function
 @app.route('/registration/', methods=["POST"])
 def registration():
-    db = Database
+    db = Database()
     response = {}
 
     if request.method == "POST":
@@ -301,16 +329,17 @@ def registration():
             response['message'] = "Error! Please enter all fields."
             return response
 
+        if not validate_email.validate_email(email, verify=True):
+            response['status_code'] = 400
+            response['message'] = "Error! Please enter a valid email address."
+
         if registered_username:
             response['username'] = username
             response['status_code'] = 400
             response['message'] = "Username already taken. Please enter a unique username."
             return response
 
-        values = (name, surname, email, username, password)
-        db.registration(values)
-        response["message"] = "New user successfully registered"
-        response["status_code"] = 200
+        db.registration(name, surname, email, username, password)
 
         mail = Mail(app)
         msg = Message("Welcome!", sender='ifyshop965@gmail.com', recipients=[email])
@@ -321,6 +350,8 @@ def registration():
                               "Kind regards,\n Shopify Team"
         mail.send(msg)
 
+        response["message"] = "New user successfully registered"
+        response["status_code"] = 200
         return response
 
 
@@ -401,9 +432,10 @@ def edit_profile(id):
     if request.method == "PUT":
         incoming_data = dict(request.json)
         db = Database()
-        db.edit_profile(incoming_data, id)
+        response = db.edit_profile(incoming_data, id)
 
     return response
+
 
 
 # Delete a users profile route and function
@@ -425,15 +457,15 @@ def add_product():
     response = {}
 
     if request.method == "POST":
-        product = request.form['product']
+        product_name = request.form['product_name']
+        product_image = request.files['product_image']
         category = request.form['category']
         description = request.form['description']
         dimensions = request.form['dimensions']
         price = request.form['price']
         id = request.form['id']
 
-        values = (product, category, description, dimensions, price, id)
-        db.add_product(values)
+        db.add_product(product_name, product_image, category, description, dimensions, price, id)
         response["status_code"] = 201
         response['description'] = "Product added successfully"
         return response
@@ -460,7 +492,7 @@ def edit_product(product_id):
     if request.method == "PUT":
         incoming_data = dict(request.json)
         db = Database()
-        db.edit_product(incoming_data, product_id)
+        response = db.edit_product(incoming_data, product_id)
 
     return response
 
@@ -485,7 +517,8 @@ def view_product(product_id):
     db = Database()
     response = {}
 
-    db.view_product(product_id)
+    data = db.view_product(product_id)
+    response['data'] = data
     response['status_code'] = 200
     response['description'] = "Product was successfully retrieved"
 
@@ -494,19 +527,17 @@ def view_product(product_id):
 
 # View a specifics users products route and function
 @app.route('/view-user-products/<int:id>/', methods=["GET"])
+@jwt_required()
 def view_user_products(id):
     response = {}
+    db = Database()
 
-    with sqlite3.connect('pos.db') as conn:
-        cursor = conn.cursor()
-        cursor.execute()
-        all_products = cursor.fetchall()
+    user_products = db.view_users_products(id)
+    response['status_code'] = 200
+    response['message'] = "All products from user retrieved successfully"
+    response['data'] = user_products
 
-        response['status_code'] = 200
-        response['message'] = "All products from user retrieved successfully"
-        response['data'] = all_products
-
-        return response
+    return response
 
 
 if __name__ == '__main__':
