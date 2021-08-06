@@ -34,18 +34,22 @@ class Product(object):
 # Creating a database class
 class Database():
     def __init__(self):
+        # Opening point of sale database
         self.conn = sqlite3.connect('pos.db')
         self.cursor = self.conn.cursor()
 
+    # Registration function
     def registration(self, name, surname, email, username, password):
         self.cursor.execute("INSERT INTO user(name, surname, email, username, password) VALUES (?, ?, ?, ?, ?)"
                             , (name, surname, email, username, password))
         self.conn.commit()
 
+    # Edit user profile function
     def edit_profile(self, incoming_data, id):
         response = {}
         put_data = {}
 
+        # If the name is edited
         if incoming_data.get('name') is not None:
             put_data['name'] = incoming_data.get('name')
             with sqlite3.connect('pos.db') as conn:
@@ -55,6 +59,7 @@ class Database():
                 response['status_code'] = 200
                 response['message'] = "Name successfully updated"
 
+        # If the surname is edited
         if incoming_data.get('surname') is not None:
             put_data['surname'] = incoming_data.get('surname')
             with sqlite3.connect('pos.db') as conn:
@@ -64,6 +69,7 @@ class Database():
                 response['status_code'] = 200
                 response['message'] = "Surname successfully updated"
 
+        # If the email is edited
         if incoming_data.get('email') is not None:
             put_data['email'] = incoming_data.get('email')
             with sqlite3.connect('pos.db') as conn:
@@ -73,6 +79,7 @@ class Database():
                 response['status_code'] = 200
                 response['message'] = "ID number successfully updated"
 
+        # If the username is edited
         if incoming_data.get('username') is not None:
             put_data['username'] = incoming_data.get('username')
             with sqlite3.connect('pos.db') as conn:
@@ -82,6 +89,7 @@ class Database():
                 response['status_code'] = 200
                 response['message'] = "Username successfully updated"
 
+        # If the password is edited
         if incoming_data.get('password') is not None:
             put_data['password'] = incoming_data.get('password')
             with sqlite3.connect('pos.db') as conn:
@@ -94,11 +102,13 @@ class Database():
         return response
 
 
+    # Delete profile function
     def delete_profile(self, value):
         query = ("DELETE FROM user WHERE id='{}'".format(value))
         self.cursor.execute(query)
         self.conn.commit()
 
+    # Add new product function
     def add_product(self, product_name, product_image, category, description, dimensions, price, id):
         cloudinary.config(cloud_name='dxgylrfai', api_key='297452228378499', api_secret='lMfu9nSDHtFhnaRTiEch_gfzm_A')
         upload_result = None
@@ -111,10 +121,12 @@ class Database():
                             (product_name, upload_result['url'], category, description, dimensions, price, id))
         self.conn.commit()
 
+    # Editing a product function
     def edit_product(self, incoming_data, product_id):
         response = {}
         put_data = {}
 
+        # If the name of the product is edited
         if incoming_data.get('product_name') is not None:
             put_data['product_name'] = incoming_data.get('product_name')
             with sqlite3.connect('pos.db') as conn:
@@ -124,6 +136,7 @@ class Database():
                 response['status_code'] = 200
                 response['message'] = "Product name was successfully updated."
 
+        # If the product image is updated
         if incoming_data.get('product_image') is not None:
             put_data['product_image'] = incoming_data.get('product_image')
             with sqlite3.connect('pos.db') as conn:
@@ -133,6 +146,7 @@ class Database():
                 response['status_code'] = 200
                 response['message'] = "Product image was successfully updated."
 
+        # If the product category is edited
         if incoming_data.get('category') is not None:
             put_data['category'] = incoming_data.get('category')
             with sqlite3.connect('pos.db') as conn:
@@ -142,6 +156,7 @@ class Database():
                 response['status_code'] = 200
                 response['message'] = "Category successfully updated."
 
+        # If the product description is edited
         if incoming_data.get('description') is not None:
             put_data['description'] = incoming_data.get('description')
 
@@ -153,6 +168,7 @@ class Database():
                 response['status_code'] = 200
                 response['message'] = "Description was successfully updated."
 
+        # If the product dimensions is edited
         if incoming_data.get('dimensions') is not None:
             put_data['dimensions'] = incoming_data.get('dimensions')
 
@@ -164,6 +180,7 @@ class Database():
                 response['status_code'] = 200
                 response['message'] = "Dimensions was successfully updated."
 
+        # If the product price is edited
         if incoming_data.get('price') is not None:
             put_data['price'] = incoming_data.get('price')
 
@@ -175,6 +192,7 @@ class Database():
                 response['status_code'] = 200
                 response['message'] = "Price was successfully updated."
 
+        # If the user id is edited
         if incoming_data.get('id') is not None:
             put_data['id'] = incoming_data.get('id')
 
@@ -188,22 +206,26 @@ class Database():
 
         return response
 
+    # Deleting a product function
     def delete_product(self, value):
         query = ("DELETE FROM product WHERE product_id='{}'".format(value))
         self.cursor.execute(query)
         self.conn.commit()
 
+    # Showing all products function
     def show_products(self):
         query = ("SELECT * FROM product")
         self.cursor.execute(query)
         return self.cursor.fetchall()
 
+    # Viewing a specific product function
     def view_product(self, value):
         query = ("SELECT * FROM product WHERE product_id='{}'".format(value))
         self.cursor.execute(query)
         response = self.cursor.fetchone()
         return response
 
+    # Viewing a specific users products
     def view_users_products(self, value):
         query = ("SELECT * FROM product WHERE id='{}'".format(value))
         self.cursor.execute(query)
@@ -329,10 +351,13 @@ def registration():
             response['message'] = "Error! Please enter all fields."
             return response
 
+        # Checks if the email is valid
         if not validate_email.validate_email(email, verify=True):
             response['status_code'] = 400
             response['message'] = "Error! Please enter a valid email address."
+            return response
 
+        # Checks if the username exists already
         if registered_username:
             response['username'] = username
             response['status_code'] = 400
@@ -341,6 +366,7 @@ def registration():
 
         db.registration(name, surname, email, username, password)
 
+        # Sends an email to the user confirming they have successfully registered
         mail = Mail(app)
         msg = Message("Welcome!", sender='ifyshop965@gmail.com', recipients=[email])
         msg.body = "Good morning/afternoon {}.\n".format(name)
@@ -379,6 +405,7 @@ def login():
             response['message'] = "Error! Please enter your password."
             return response
 
+        # Checks if the user exists in the database
         if registered_user:
             response['registered_user'] = registered_user
             response['status_code'] = 200
@@ -437,7 +464,6 @@ def edit_profile(id):
     return response
 
 
-
 # Delete a users profile route and function
 @app.route('/delete-profile/<int:id>')
 @jwt_required()
@@ -467,7 +493,7 @@ def add_product():
         id = request.form['id']
 
         db.add_product(product_name, product_image, category, description, dimensions, price, id)
-        response["status_code"] = 201
+        response["status_code"] = 200
         response['description'] = "Product added successfully"
         return response
 
@@ -525,8 +551,8 @@ def view_product(product_id):
 
 
 # View a specifics users products route and function
-@app.route('/view-user-products/<int:id>/', methods=["GET"])
-def view_user_products(id):
+@app.route('/view-users-products/<int:id>/', methods=["GET"])
+def view_users_products(id):
     response = {}
     db = Database()
 
