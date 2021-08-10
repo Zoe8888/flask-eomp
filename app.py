@@ -31,6 +31,7 @@ class Product(object):
         self.price = price
 
 
+# Creating a cart class
 class Cart(object):
     def __init__(self, product_id, product_name, product_image, quantity, price):
         self.product_id = product_id
@@ -380,6 +381,7 @@ def registration():
             cursor.execute("SELECT * FROM user WHERE username='{}'".format(username))
             registered_username = cursor.fetchone()
 
+        # Creates error if all fields aren't filled out
         if name == '' or surname == '' or email == '' or username == '' or password == '':
             response['status_code'] = 400
             response['message'] = "Error! Please enter all fields."
@@ -429,11 +431,13 @@ def login():
             cursor.execute("SELECT * FROM user WHERE username=? AND password=?", (username, password))
             registered_user = cursor.fetchone()
 
+        # If username is empty it creates an error
         if username == '':
             response['status_code'] = 400
             response['message'] = "Error! Please enter your username."
             return response
 
+        # If password is empty it creates an error
         if password == '':
             response['status_code'] = 400
             response['message'] = "Error! Please enter your password."
