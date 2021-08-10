@@ -267,8 +267,9 @@ def init_product_table():
 # Creating a cart table
 def init_cart_table():
     with sqlite3.connect('pos.db') as conn:
-        conn.execute("CREATE TABLE IF NOT EXISTS cart (product_id INTEGER FOREIGN KEY, product_name TEXT NOT NULL, "
-                     "product_image TEXT NOT NULL, quantity TEXT NOT NULL, price TEXT NOT NULL)")
+        conn.execute("CREATE TABLE IF NOT EXISTS cart (product_name TEXT NOT NULL, product_image TEXT NOT NULL, "
+                     "quantity TEXT NOT NULL, price TEXT NOT NULL, product_id INTEGER, id INTEGER NOT NULL,"
+                     "FOREIGN KEY(product_id) REFERENCES product(product_id), FOREIGN KEY (id) REFERENCES user(id))")
         print("Cart table created successfully.")
 
 
