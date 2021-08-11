@@ -371,11 +371,11 @@ def registration():
 
     if request.method == "POST":
 
-        name = request.form['name']
-        surname = request.form['surname']
-        email = request.form['email']
-        username = request.form['username']
-        password = request.form['password']
+        name = request.json['name']
+        surname = request.json['surname']
+        email = request.json['email']
+        username = request.json['username']
+        password = request.json['password']
 
         with sqlite3.connect('pos.db') as conn:
             cursor = conn.cursor()
