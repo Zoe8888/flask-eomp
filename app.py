@@ -123,7 +123,7 @@ class Database():
         cloudinary.config(cloud_name='dxgylrfai', api_key='297452228378499', api_secret='lMfu9nSDHtFhnaRTiEch_gfzm_A')
         upload_result = None
         app.logger.info('%s file_to_upload', product_image)
-        if product_name:
+        if product_image:
             upload_result = cloudinary.uploader.upload(product_image)
             app.logger.info(upload_result)
         self.cursor.execute("INSERT INTO product (product_name, product_image, category, description, dimensions, "
