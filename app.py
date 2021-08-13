@@ -612,7 +612,7 @@ def view_users_products(id):
 
 
 # View users cart route
-@app.route('/view-cart/<int:id>', methods=["GET"])
+@app.route('/view-cart/<username>', methods=["GET"])
 def view_cart(id):
     response = {}
     db = Database()
