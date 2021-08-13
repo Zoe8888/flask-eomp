@@ -347,7 +347,7 @@ def identity(payload):
 
 # App initialized
 app = Flask(__name__)
-CORS(app)
+# CORS(app)
 app.debug = True
 app.config['SECRET_KEY'] = 'super-secret'
 # Extends the jwt tokens validation time to 20 hours
