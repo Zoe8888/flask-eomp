@@ -241,6 +241,8 @@ class Database():
         self.cursor.execute(query)
         return  self.cursor.fetchall()
 
+    #
+
 
 # Creating a user table
 def init_user_table():
@@ -473,14 +475,14 @@ def display_users():
 
 
 # View specific users profile route
-@app.route('/view-profile/<int:id>/', methods=["GET"])
+@app.route('/view-profile/<username>/', methods=["GET"])
 @jwt_required()
-def view_profile(id):
+def view_profile(username):
     response = {}
 
     with sqlite3.connect('pos.db') as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM user WHERE id=?", (str(id)))
+        cursor.execute("SELECT * FROM user WHERE username=?", (str(username)))
 
         response['status_code'] = 200
         response['message'] = "Profile retrieved successfully"
