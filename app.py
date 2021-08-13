@@ -523,13 +523,13 @@ def add_product():
     response = {}
 
     if request.method == "POST":
-        product_name = request.form['product_name']
-        product_image = request.files['product_image']
-        category = request.form['category']
-        description = request.form['description']
-        dimensions = request.form['dimensions']
-        price = request.form['price']
-        id = request.form['id']
+        product_name = request.json['product_name']
+        product_image = request.json['product_image']
+        category = request.json['category']
+        description = request.json['description']
+        dimensions = request.json['dimensions']
+        price = request.json['price']
+        id = request.json['id']
 
         db.add_product(product_name, product_image, category, description, dimensions, price, id)
         response["status_code"] = 200
