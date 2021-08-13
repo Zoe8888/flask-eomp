@@ -241,7 +241,13 @@ class Database():
         self.cursor.execute(query)
         return  self.cursor.fetchall()
 
-    #
+    # View cart
+    def view_cart(self, value):
+        query = ("SELECT * FROM cart WHERE id='{}'".format(value))
+        self.cursor.execute(query)
+        return self.cursor.fetchall()
+
+    # def update_cart(self, ):
 
 
 # Creating a user table
@@ -602,6 +608,19 @@ def view_users_products(id):
     response['message'] = "All products from user retrieved successfully"
     response['data'] = user_products
 
+    return response
+
+
+# View users cart route
+@app.route('/view-cart/<int:id>', methods=["GET"])
+def view_cart(id):
+    response = {}
+    db = Database()
+
+    cart = db.view_cart(id)
+    response['status_code'] = 200
+    response['message'] = "Cart successfully retrieved"
+    response['data'] = cart
     return response
 
 
