@@ -362,9 +362,9 @@ app.config['JWT_EXPIRATION_DELTA'] = datetime.timedelta(hours=20)
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 465
 # Senders email
-app.config['MAIL_USERNAME'] = 'ifyshop965@gmail.com'
+app.config['MAIL_USERNAME'] = 'crystalcavecpt@gmail.com'
 # Senders password
-app.config['MAIL_PASSWORD'] = 't3amShopify'
+app.config['MAIL_PASSWORD'] = 'cryta1Cav3'
 app.config['MAIL_USE_TLS'] = False
 app.config['MAIL_USE_SSL'] = True
 
@@ -423,6 +423,8 @@ def registration():
 
         response["message"] = "New user successfully registered"
         response["status_code"] = 200
+        global  users
+        users = fetch_users()
         return response
 
 
@@ -432,8 +434,8 @@ def login():
     response = {}
 
     if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
+        username = request.json['username']
+        password = request.json['password']
 
         with sqlite3.connect('pos.db') as conn:
             cursor = conn.cursor()
