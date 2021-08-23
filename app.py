@@ -418,7 +418,7 @@ def registration():
         msg.body = msg.body + "Your have successfully registered your profile on our site with the username {}.\n"\
             .format(username)
         msg.body = msg.body + "Please feel free to send us email if you have any queries or concerns.\n \n" \
-                              "Kind regards,\n Shopify Team"
+                              "Kind regards,\n Crystal Cave Team"
         mail.send(msg)
 
         response["message"] = "New user successfully registered"
