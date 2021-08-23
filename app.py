@@ -364,7 +364,7 @@ app.config['MAIL_PORT'] = 465
 # Senders email
 app.config['MAIL_USERNAME'] = 'crystalcavecpt@gmail.com'
 # Senders password
-app.config['MAIL_PASSWORD'] = 'cryta1Cav3'
+app.config['MAIL_PASSWORD'] = 'crysta1Cav3'
 app.config['MAIL_USE_TLS'] = False
 app.config['MAIL_USE_SSL'] = True
 
