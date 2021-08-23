@@ -413,7 +413,7 @@ def registration():
 
         # Sends an email to the user after they have successfully registered
         mail = Mail(app)
-        msg = Message("Welcome!", sender='ifyshop965@gmail.com', recipients=[email])
+        msg = Message("Welcome!", sender='crystalcavecpt@gmail.com', recipients=[email])
         msg.body = "Good morning/afternoon {}.\n".format(name)
         msg.body = msg.body + "Your have successfully registered your profile on our site with the username {}.\n"\
             .format(username)
