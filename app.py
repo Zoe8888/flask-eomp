@@ -494,7 +494,7 @@ def view_profile(username):
 
     with sqlite3.connect('pos.db') as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM user WHERE username=?", (str(username)))
+        cursor.execute("SELECT * FROM user WHERE username='{}'".format(username))
 
         response['status_code'] = 200
         response['message'] = "Profile retrieved successfully"
