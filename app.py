@@ -341,12 +341,16 @@ userid_table = {u.id: u for u in users}
 
 
 def authenticate(username, password):
+    users = fetch_users()
+    username_table = {u.username: u for u in users}
     user = username_table.get(username, None)
     if user and hmac.compare_digest(user.password.encode('utf-8'), password.encode('utf-8')):
         return user
 
 
 def identity(payload):
+    users = fetch_users()
+    userid_table = {u.id: u for u in users}
     id = payload['identity']
     return userid_table.get(id, None)
 
